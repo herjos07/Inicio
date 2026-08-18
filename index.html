@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mesa de Cotizaciones</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #10181f;
+    --panel: #17222b;
+    --panel-2: #1c2831;
+    --line: #2a3944;
+    --text: #e8eef1;
+    --muted: #8ea1ab;
+    --accent: #33c9c0;
+    --accent-dim: #1f6b66;
+    --gain: #4cc38a;
+    --loss: #e5533d;
+    --font-display: 'Fraunces', serif;
+    --font-body: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+  }
+  /* Ticker tape signature element */
+  .tape-wrap {
+    overflow: hidden;
+    border-bottom: 1px solid var(--line);
+    background: var(--panel-2);
+    white-space: nowrap;
+    padding: 8px 0;
+  }
+  .tape {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--muted);
+    letter-spacing: 0.3px;
+    animation: scroll-left 22s linear infinite;
+    padding-left: 100%;
+  }
+  .tape span { margin-right: 40px; }
+  .tape .up { color: var(--gain); }
+  .tape .down { color: var(--loss); }
+  @keyframes scroll-left {
+    from { transform: translateX(0); }
+    to { transform: translateX(-100%); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .tape { animation: none; padding-left: 16px; }
+  }
+
+  .wrap { max-width: 980px; margin: 0 auto; padding: 32px 20px 80px; }
+
+  .masthead { text-align: center; margin-bottom: 28px; }
+  .masthead .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+  }
+  .masthead h1 {
+    font-family: var(--font-display);
+    font-weight: 600;
+    font-size: 34px;
+    margin: 6px 0 4px;
+  }
+  .masthead p { color: var(--muted); font-size: 14px; margin: 0; }
+
+  .search-row {
+    display: flex;
+    gap: 10px;
+    max-width: 480px;
+    margin: 0 auto 36px;
+  }
+  .search-row input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 12px 14px;
+    border-radius: 3px;
+    outline: none;
+  }
+  .search-row input:focus { border-color: var(--accent); }
+  .search-row input::placeholder { color: var(--muted); text-transform: none; letter-spacing: normal; }
+  .search-row button {
+    background: var(--accent);
+    color: #0a1216;
+    border: none;
+    font-family: var(--font-body);
+    font-weight: 600;
+    font-size: 14px;
+    padding: 0 20px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .search-row button:hover { background: #4fdcd2; }
+  .search-row button:disabled { opacity: 0.5; cursor: default; }
+
+  .status { text-align: center; color: var(--muted); font-family: var(--font-mono); font-size: 13px; min-height: 20px; margin-bottom: 20px; }
+  .status.error { color: var(--loss); }
+
+  .quote-head {
+    display: none;
+    align-items: baseline;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 18px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .quote-head h2 { font-family: var(--font-display); font-size: 26px; margin: 0; }
+  .quote-head .sym { color: var(--muted); font-family: var(--font-mono); font-size: 14px; }
+  .price-block { text-align: right; }
+  .price-block .px { font-family: var(--font-mono); font-size: 28px; font-weight: 600; }
+  .price-block .chg { font-family: var(--font-mono); font-size: 14px; }
+  .price-block .mxn { font-family: var(--font-mono); font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  .fx-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--panel-2);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 10px 16px;
+    margin-bottom: 20px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .fx-label { color: var(--muted); text-transform: uppercase; letter-spacing: 1px; font-size: 11px; }
+  .fx-value { color: var(--accent); font-weight: 600; }
+
+  .multi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stock-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px;
+  }
+  .stock-card .sc-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; }
+  .stock-card .sc-sym { font-family: var(--font-display); font-size: 18px; font-weight: 600; }
+  .stock-card .sc-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 3px;
+  }
+  .stock-card .sc-badge.bullish { background: rgba(76,195,138,0.12); color: var(--gain); }
+  .stock-card .sc-badge.bearish { background: rgba(229,83,61,0.12); color: var(--loss); }
+  .stock-card .sc-badge.neutral { background: rgba(142,161,171,0.1); color: var(--muted); }
+  .stock-card .sc-price { font-family: var(--font-mono); font-size: 22px; font-weight: 600; }
+  .stock-card .sc-chg { font-family: var(--font-mono); font-size: 13px; margin-top: 2px; }
+  .stock-card .sc-mxn { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .stock-card .sc-rsi { font-family: var(--font-mono); font-size: 12px; color: var(--muted); margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--line); }
+  .stock-card.sc-error { color: var(--loss); font-family: var(--font-mono); font-size: 13px; }
+
+  .panel {
+    display: none;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+  .panel h3 {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 14px;
+  }
+  .range-tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+  .range-tabs button {
+    background: transparent;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 5px 12px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .range-tabs button.active { border-color: var(--accent); color: var(--accent); }
+
+  .fund-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--line);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .fund-cell { background: var(--panel-2); padding: 14px 16px; }
+  .fund-cell .label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .fund-cell .value { font-family: var(--font-mono); font-size: 17px; margin-top: 4px; }
+
+  .signal-verdict {
+    margin-top: 16px;
+    padding: 16px;
+    border-radius: 4px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-size: 20px;
+    font-weight: 600;
+  }
+  .signal-verdict.bullish { background: rgba(76,195,138,0.12); color: var(--gain); border: 1px solid rgba(76,195,138,0.3); }
+  .signal-verdict.bearish { background: rgba(229,83,61,0.12); color: var(--loss); border: 1px solid rgba(229,83,61,0.3); }
+  .signal-verdict.neutral { background: rgba(142,161,171,0.1); color: var(--muted); border: 1px solid var(--line); }
+  .signal-verdict .sub { display: block; font-family: var(--font-body); font-size: 12px; font-weight: 400; margin-top: 4px; opacity: 0.85; }
+
+  .signal-disclaimer { font-size: 12px; color: var(--muted); text-align: center; margin: 14px 0 0; line-height: 1.6; }
+
+  .empty-state { text-align: center; color: var(--muted); padding: 60px 20px; font-family: var(--font-mono); font-size: 13px; line-height: 1.8; }
+  .empty-state b { color: var(--text); }
+
+  footer { text-align: center; color: var(--muted); font-size: 12px; margin-top: 40px; }
+</style>
+</head>
+<body>
+
+<div class="tape-wrap"><div class="tape" id="tape"></div></div>
+
+<div class="wrap">
+  <div class="masthead">
+    <div class="eyebrow">Mesa de cotizaciones</div>
+    <h1>Consulta cualquier acción</h1>
+    <p>Precio histórico, medias móviles, RSI y fundamentales — en un solo lugar</p>
+  </div>
+
+  <div class="search-row">
+    <input id="symbolInput" type="text" placeholder="AAPL, BTC, MSFT, TSLA…" autocomplete="off">
+    <button id="searchBtn">Buscar</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="quote-head" id="quoteHead">
+    <div>
+      <h2 id="qName">—</h2>
+      <div class="sym" id="qSym">—</div>
+    </div>
+    <div class="price-block">
+      <div class="px" id="qPrice">—</div>
+      <div class="chg" id="qChange">—</div>
+      <div class="mxn" id="qPriceMxn"></div>
+    </div>
+  </div>
+
+  <div class="fx-bar" id="fxBar" style="display:none;">
+    <span class="fx-label">Tipo de cambio</span>
+    <span class="fx-value" id="fxValue">—</span>
+  </div>
+
+  <div class="multi-grid" id="multiGrid" style="display:none;"></div>
+
+  <div class="panel" id="chartPanel">
+    <h3>Precio &amp; medias móviles</h3>
+    <div class="range-tabs" id="rangeTabs">
+      <button data-range="3mo">3M</button>
+      <button data-range="6mo" class="active">6M</button>
+      <button data-range="1y">1A</button>
+      <button data-range="5y">5A</button>
+    </div>
+    <canvas id="priceChart" height="110"></canvas>
+  </div>
+
+  <div class="panel" id="rsiPanel">
+    <h3>RSI (14)</h3>
+    <canvas id="rsiChart" height="60"></canvas>
+  </div>
+
+  <div class="panel" id="signalPanel">
+    <h3>Lectura técnica</h3>
+    <div class="fund-grid" id="signalGrid"></div>
+    <div class="signal-verdict" id="signalVerdict"></div>
+    <p class="signal-disclaimer">
+      Esto es una lectura mecánica de los indicadores, no una recomendación de inversión.
+      No considera noticias, resultados financieros ni el contexto del negocio. Tú decides.
+    </p>
+  </div>
+
+  <div class="panel" id="fundPanel">
+    <h3>Fundamentales</h3>
+    <div class="fund-grid" id="fundGrid"></div>
+  </div>
+
+  <div class="empty-state" id="emptyState">
+    Escribe un símbolo arriba para empezar.<br>
+    <b>Ejemplos:</b> AAPL &middot; MSFT &middot; BTC &middot; ETH &middot; TSLA
+  </div>
+
+  <footer>Datos de mercado con retraso. No es asesoría de inversión.</footer>
+</div>
+
+<script>
+const tapeSymbols = ['AAPL','MSFT','GOOGL','AMZN','NVDA','TSLA','META','JPM'];
+const tapeEl = document.getElementById('tape');
+
+// Yahoo Finance no permite peticiones directas desde el navegador (CORS).
+// Probamos varias rutas alternas por si una falla o está saturada.
+const PROXIES = [
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://corsproxy.io/?url=${encodeURIComponent(url)}`,
+  url => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+];
+
+async function fetchWithFallback(url, timeoutMs = 8000) {
+  let lastError = null;
+  for (const buildProxyUrl of PROXIES) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      const r = await fetch(buildProxyUrl(url), { signal: controller.signal });
+      clearTimeout(timer);
+      if (!r.ok) throw new Error(`status ${r.status}`);
+      const j = await r.json();
+      return j;
+    } catch (e) {
+      lastError = e;
+      continue; // intenta la siguiente ruta
+    }
+  }
+  throw lastError || new Error('todas las rutas fallaron');
+}
+
+async function loadTape() {
+  let html = '';
+  for (const s of tapeSymbols) {
+    try {
+      const j = await fetchWithFallback(`https://query1.finance.yahoo.com/v8/finance/chart/${s}?range=5d&interval=1d`);
+      const res = j.chart.result[0];
+      const closes = res.indicators.quote[0].close.filter(v => v != null);
+      const last = closes[closes.length - 1];
+      const prev = closes[closes.length - 2];
+      const pct = ((last - prev) / prev * 100).toFixed(2);
+      const dir = pct >= 0 ? 'up' : 'down';
+      const arrow = pct >= 0 ? '▲' : '▼';
+      html += `<span>${s} ${last.toFixed(2)} <span class="${dir}">${arrow} ${Math.abs(pct)}%</span></span>`;
+    } catch (e) { /* skip symbol on failure */ }
+  }
+  tapeEl.innerHTML = html + html; // duplicate for seamless loop
+  if (!html) tapeEl.innerHTML = 'Cinta no disponible en este momento &nbsp;&middot;&nbsp; usa el buscador de arriba';
+}
+loadTape();
+
+let priceChart = null;
+let rsiChart = null;
+let currentSymbol = null;
+let currentRange = '6mo';
+
+const statusEl = document.getElementById('status');
+const searchBtn = document.getElementById('searchBtn');
+const symbolInput = document.getElementById('symbolInput');
+
+function setStatus(msg, isError) {
+  statusEl.textContent = msg || '';
+  statusEl.className = 'status' + (isError ? ' error' : '');
+}
+
+function sma(values, period) {
+  const out = new Array(values.length).fill(null);
+  let sum = 0;
+  for (let i = 0; i < values.length; i++) {
+    sum += values[i];
+    if (i >= period) sum -= values[i - period];
+    if (i >= period - 1) out[i] = sum / period;
+  }
+  return out;
+}
+
+function rsi(values, period = 14) {
+  const out = new Array(values.length).fill(null);
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= period; i++) {
+    const diff = values[i] - values[i - 1];
+    if (diff >= 0) gains += diff; else losses -= diff;
+  }
+  let avgGain = gains / period, avgLoss = losses / period;
+  out[period] = 100 - (100 / (1 + (avgLoss === 0 ? 100 : avgGain / avgLoss)));
+  for (let i = period + 1; i < values.length; i++) {
+    const diff = values[i] - values[i - 1];
+    const gain = diff > 0 ? diff : 0;
+    const loss = diff < 0 ? -diff : 0;
+    avgGain = (avgGain * (period - 1) + gain) / period;
+    avgLoss = (avgLoss * (period - 1) + loss) / period;
+    out[i] = avgLoss === 0 ? 100 : 100 - (100 / (1 + avgGain / avgLoss));
+  }
+  return out;
+}
+
+function fmtNum(n, opts = {}) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  return Number(n).toLocaleString('en-US', opts);
+}
+
+function fmtLarge(n) {
+  if (n === null || n === undefined || isNaN(n)) return '—';
+  const abs = Math.abs(n);
+  if (abs >= 1e12) return (n / 1e12).toFixed(2) + 'T';
+  if (abs >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+  if (abs >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+  return fmtNum(n);
+}
+
+// Si el símbolo tal cual no existe, probamos agregando "-USD" (formato de cripto en Yahoo Finance)
+const KNOWN_CRYPTO = ['BTC','ETH','SOL','XRP','DOGE','ADA','BNB','LTC','DOT','AVAX','MATIC','SHIB','LINK','TRX'];
+
+function isCryptoLike(symbol) {
+  return symbol.endsWith('-USD') || KNOWN_CRYPTO.includes(symbol);
+}
+
+async function resolveAndFetchChart(symbol, range) {
+  const candidates = symbol.endsWith('-USD') ? [symbol] : [symbol, `${symbol}-USD`];
+  let lastError = null;
+  for (const candidate of candidates) {
+    try {
+      const j = await fetchWithFallback(`https://query1.finance.yahoo.com/v8/finance/chart/${candidate}?range=${range}&interval=1d`);
+      const res = j.chart.result && j.chart.result[0];
+      if (res) return { json: j, resolvedSymbol: candidate };
+    } catch (e) {
+      lastError = e;
+    }
+  }
+  throw lastError || new Error('symbol not found');
+}
+
+async function fetchHistory(symbol, range) {
+  const { json: j, resolvedSymbol } = await resolveAndFetchChart(symbol, range);
+  const res = j.chart.result[0];
+  const timestamps = res.timestamp;
+  const closes = res.indicators.quote[0].close;
+  const dates = [], prices = [];
+  for (let i = 0; i < timestamps.length; i++) {
+    if (closes[i] != null) {
+      dates.push(new Date(timestamps[i] * 1000).toLocaleDateString('es-MX', { day: '2-digit', month: 'short' }));
+      prices.push(closes[i]);
+    }
+  }
+  return { dates, prices, meta: res.meta, resolvedSymbol };
+}
+
+async function fetchFundamentals(symbol) {
+  const modules = 'summaryDetail,defaultKeyStatistics,financialData,price';
+  const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${symbol}?modules=${modules}`;
+  const j = await fetchWithFallback(url);
+  const result = j.quoteSummary && j.quoteSummary.result && j.quoteSummary.result[0];
+  if (!result) throw new Error('no fundamentals');
+  return result;
+}
+
+function renderCharts(data) {
+  const priceCanvas = document.getElementById('priceChart');
+  const rsiCanvas = document.getElementById('rsiChart');
+  const sma20 = sma(data.prices, 20);
+  const sma50 = sma(data.prices, 50);
+  const rsiVals = rsi(data.prices, 14);
+
+  if (priceChart) priceChart.destroy();
+  if (rsiChart) rsiChart.destroy();
+
+  priceChart = new Chart(priceCanvas, {
+    type: 'line',
+    data: {
+      labels: data.dates,
+      datasets: [
+        { label: 'Cierre', data: data.prices, borderColor: '#33c9c0', backgroundColor: 'rgba(51,201,192,0.08)', fill: true, pointRadius: 0, borderWidth: 2, tension: 0.15 },
+        { label: 'SMA 20', data: sma20, borderColor: '#e8b84b', pointRadius: 0, borderWidth: 1.5, tension: 0.15 },
+        { label: 'SMA 50', data: sma50, borderColor: '#8ea1ab', pointRadius: 0, borderWidth: 1.5, tension: 0.15 },
+      ]
+    },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: { legend: { labels: { color: '#e8eef1', font: { family: 'IBM Plex Mono', size: 11 } } } },
+      scales: {
+        x: { ticks: { color: '#8ea1ab', maxTicksLimit: 8, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#2a3944' } },
+        y: { ticks: { color: '#8ea1ab', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#2a3944' } }
+      }
+    }
+  });
+
+  rsiChart = new Chart(rsiCanvas, {
+    type: 'line',
+    data: {
+      labels: data.dates,
+      datasets: [{ label: 'RSI', data: rsiVals, borderColor: '#c9a533', pointRadius: 0, borderWidth: 1.5, tension: 0.15 }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#8ea1ab', maxTicksLimit: 8, font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#2a3944' } },
+        y: { min: 0, max: 100, ticks: { color: '#8ea1ab', font: { family: 'IBM Plex Mono', size: 10 } }, grid: { color: '#2a3944' } }
+      }
+    }
+  });
+}
+
+function renderSignal(data) {
+  const closes = data.prices;
+  const last = closes[closes.length - 1];
+  const sma20Arr = sma(closes, 20);
+  const sma50Arr = sma(closes, 50);
+  const rsiArr = rsi(closes, 14);
+  const sma20 = sma20Arr[sma20Arr.length - 1];
+  const sma50 = sma50Arr[sma50Arr.length - 1];
+  const rsiVal = rsiArr[rsiArr.length - 1];
+
+  let bullPoints = 0, bearPoints = 0;
+  const factors = [];
+
+  // Factor 1: precio vs SMA20
+  if (sma20 != null) {
+    const above = last > sma20;
+    if (above) bullPoints++; else bearPoints++;
+    factors.push(['Precio vs SMA 20', `${fmtNum(last, {maximumFractionDigits:2})} vs ${fmtNum(sma20, {maximumFractionDigits:2})}`, above ? 'up' : 'down']);
+  }
+
+  // Factor 2: SMA20 vs SMA50 (tendencia)
+  if (sma20 != null && sma50 != null) {
+    const goldenTrend = sma20 > sma50;
+    if (goldenTrend) bullPoints++; else bearPoints++;
+    factors.push(['SMA 20 vs SMA 50', `${fmtNum(sma20, {maximumFractionDigits:2})} vs ${fmtNum(sma50, {maximumFractionDigits:2})}`, goldenTrend ? 'up' : 'down']);
+  }
+
+  // Factor 3: RSI
+  if (rsiVal != null) {
+    let rsiLabel = 'Neutral (30-70)';
+    let rsiDir = null;
+    if (rsiVal >= 70) { rsiLabel = 'Sobrecompra (≥70)'; bearPoints++; rsiDir = 'down'; }
+    else if (rsiVal <= 30) { rsiLabel = 'Sobreventa (≤30)'; bullPoints++; rsiDir = 'up'; }
+    factors.push(['RSI (14)', `${rsiVal.toFixed(1)} · ${rsiLabel}`, rsiDir]);
+  }
+
+  const grid = document.getElementById('signalGrid');
+  grid.innerHTML = factors.map(([label, value, dir]) => {
+    const color = dir === 'up' ? 'var(--gain)' : dir === 'down' ? 'var(--loss)' : 'var(--text)';
+    return `<div class="fund-cell"><div class="label">${label}</div><div class="value" style="color:${color}">${value}</div></div>`;
+  }).join('');
+
+  const verdictEl = document.getElementById('signalVerdict');
+  let cls = 'neutral', title = 'Mixta / sin sesgo claro', sub = `${bullPoints} señal(es) al alza · ${bearPoints} a la baja`;
+  if (bullPoints >= 2 && bullPoints > bearPoints) { cls = 'bullish'; title = 'Sesgo técnico alcista'; }
+  else if (bearPoints >= 2 && bearPoints > bullPoints) { cls = 'bearish'; title = 'Sesgo técnico bajista'; }
+  verdictEl.className = 'signal-verdict ' + cls;
+  verdictEl.innerHTML = `${title}<span class="sub">${sub}</span>`;
+
+  document.getElementById('signalPanel').style.display = 'block';
+}
+
+function renderFundamentals(f) {
+  const grid = document.getElementById('fundGrid');
+  const sd = f.summaryDetail || {};
+  const ks = f.defaultKeyStatistics || {};
+  const fd = f.financialData || {};
+  const price = f.price || {};
+
+  const cells = [
+    ['Cap. de mercado', fmtLarge(price.marketCap && price.marketCap.raw)],
+    ['P/E (TTM)', fmtNum(sd.trailingPE && sd.trailingPE.raw, { maximumFractionDigits: 2 })],
+    ['P/E fwd', fmtNum(sd.forwardPE && sd.forwardPE.raw, { maximumFractionDigits: 2 })],
+    ['EPS (TTM)', fmtNum(ks.trailingEps && ks.trailingEps.raw, { maximumFractionDigits: 2 })],
+    ['Dividendo (%)', sd.dividendYield && sd.dividendYield.raw ? (sd.dividendYield.raw * 100).toFixed(2) + '%' : '—'],
+    ['Ingresos (TTM)', fmtLarge(fd.totalRevenue && fd.totalRevenue.raw)],
+    ['Margen neto', fd.profitMargins && fd.profitMargins.raw ? (fd.profitMargins.raw * 100).toFixed(1) + '%' : '—'],
+    ['Beta', fmtNum(sd.beta && sd.beta.raw, { maximumFractionDigits: 2 })],
+    ['Máx 52 sem', fmtNum(sd.fiftyTwoWeekHigh && sd.fiftyTwoWeekHigh.raw, { maximumFractionDigits: 2 })],
+    ['Mín 52 sem', fmtNum(sd.fiftyTwoWeekLow && sd.fiftyTwoWeekLow.raw, { maximumFractionDigits: 2 })],
+    ['Volumen prom.', fmtLarge(sd.averageVolume && sd.averageVolume.raw)],
+    ['Deuda/Capital', fmtNum(fd.debtToEquity && fd.debtToEquity.raw, { maximumFractionDigits: 2 })],
+  ];
+
+  grid.innerHTML = cells.map(([label, value]) =>
+    `<div class="fund-cell"><div class="label">${label}</div><div class="value">${value}</div></div>`
+  ).join('');
+}
+
+let usdMxnRate = null;
+
+async function fetchUsdMxnRate() {
+  if (usdMxnRate !== null) return; // ya lo tenemos, no lo vuelvas a pedir
+  try {
+    const j = await fetchWithFallback('https://query1.finance.yahoo.com/v8/finance/chart/MXN=X?range=5d&interval=1d');
+    const res = j.chart.result && j.chart.result[0];
+    const closes = res.indicators.quote[0].close.filter(v => v != null);
+    usdMxnRate = closes[closes.length - 1];
+    document.getElementById('fxValue').textContent = `1 USD = ${usdMxnRate.toFixed(2)} MXN`;
+    document.getElementById('fxBar').style.display = 'flex';
+  } catch (e) {
+    document.getElementById('fxBar').style.display = 'none';
+  }
+}
+
+function hideAllPanels() {
+  document.getElementById('quoteHead').style.display = 'none';
+  document.getElementById('chartPanel').style.display = 'none';
+  document.getElementById('rsiPanel').style.display = 'none';
+  document.getElementById('signalPanel').style.display = 'none';
+  document.getElementById('fundPanel').style.display = 'none';
+  document.getElementById('multiGrid').style.display = 'none';
+}
+
+async function runSearch() {
+  const raw = symbolInput.value.trim();
+  if (!raw) return;
+  const symbols = raw.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+  if (symbols.length === 0) return;
+
+  document.getElementById('emptyState').style.display = 'none';
+  searchBtn.disabled = true;
+
+  if (symbols.length > 1) {
+    await runMultiSearch(symbols);
+  } else {
+    await runSingleSearch(symbols[0]);
+  }
+
+  searchBtn.disabled = false;
+}
+
+async function runMultiSearch(symbols) {
+  const capped = symbols.slice(0, 8);
+  if (symbols.length > 8) {
+    setStatus('Mostrando las primeras 8 (máximo por consulta).');
+  } else {
+    setStatus(`Consultando ${capped.length} símbolos…`);
+  }
+  hideAllPanels();
+
+  const grid = document.getElementById('multiGrid');
+  grid.style.display = 'grid';
+  grid.innerHTML = capped.map(s => `<div class="stock-card" id="card-${s}"><div class="sc-sym">${s}</div><div class="sc-mxn">Cargando…</div></div>`).join('');
+
+  for (const symbol of capped) {
+    const cardEl = document.getElementById(`card-${symbol}`);
+    try {
+      const data = await fetchHistory(symbol, '6mo');
+      const meta = data.meta;
+      const closes = data.prices;
+      const last = closes[closes.length - 1];
+      const prevClose = meta.chartPreviousClose || closes[closes.length - 2];
+      const change = last - prevClose;
+      const changePct = (change / prevClose) * 100;
+
+      const sma20 = sma(closes, 20).pop();
+      const sma50 = sma(closes, 50).pop();
+      const rsiVal = rsi(closes, 14).pop();
+
+      let bull = 0, bear = 0;
+      if (sma20 != null) { last > sma20 ? bull++ : bear++; }
+      if (sma20 != null && sma50 != null) { sma20 > sma50 ? bull++ : bear++; }
+      if (rsiVal != null) { if (rsiVal >= 70) bear++; else if (rsiVal <= 30) bull++; }
+      let badgeCls = 'neutral', badgeText = 'Mixta';
+      if (bull >= 2 && bull > bear) { badgeCls = 'bullish'; badgeText = 'Alcista'; }
+      else if (bear >= 2 && bear > bull) { badgeCls = 'bearish'; badgeText = 'Bajista'; }
+
+      let mxnLine = '';
+      if (meta.currency === 'USD') {
+        await fetchUsdMxnRate();
+        if (usdMxnRate) mxnLine = `<div class="sc-mxn">≈ $${(last * usdMxnRate).toLocaleString('es-MX', {minimumFractionDigits:2, maximumFractionDigits:2})} MXN</div>`;
+      }
+
+      cardEl.innerHTML = `
+        <div class="sc-head">
+          <span class="sc-sym">${data.resolvedSymbol}</span>
+          <span class="sc-badge ${badgeCls}">${badgeText}</span>
+        </div>
+        <div class="sc-price">${fmtNum(last, {maximumFractionDigits:2})}</div>
+        <div class="sc-chg" style="color:${change >= 0 ? 'var(--gain)' : 'var(--loss)'}">${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct.toFixed(2)}%)</div>
+        ${mxnLine}
+        <div class="sc-rsi">RSI 14: ${rsiVal != null ? rsiVal.toFixed(1) : '—'}</div>
+      `;
+    } catch (e) {
+      cardEl.className = 'stock-card sc-error';
+      cardEl.innerHTML = `<div class="sc-sym">${symbol}</div><div>No se pudo cargar</div>`;
+    }
+  }
+  setStatus('');
+}
+
+async function runSingleSearch(symbol) {
+  currentSymbol = symbol;
+  setStatus(`Consultando ${symbol}…`);
+  hideAllPanels();
+
+  let data, resolvedSymbol;
+  try {
+    data = await fetchHistory(symbol, currentRange);
+    resolvedSymbol = data.resolvedSymbol;
+    currentSymbol = resolvedSymbol; // para que los tabs de rango usen el símbolo correcto (ej. BTC-USD)
+    const meta = data.meta;
+    const last = data.prices[data.prices.length - 1];
+    const prevClose = meta.chartPreviousClose || data.prices[data.prices.length - 2];
+    const change = last - prevClose;
+    const changePct = (change / prevClose * 100);
+
+    document.getElementById('qName').textContent = meta.symbol;
+    document.getElementById('qSym').textContent = `${meta.exchangeName || (isCryptoLike(resolvedSymbol) ? 'Cripto' : '')} · ${meta.currency || ''}`;
+    document.getElementById('qPrice').textContent = fmtNum(last, { maximumFractionDigits: 2 });
+    const chgEl = document.getElementById('qChange');
+    chgEl.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePct.toFixed(2)}%)`;
+    chgEl.style.color = change >= 0 ? 'var(--gain)' : 'var(--loss)';
+
+    const mxnEl = document.getElementById('qPriceMxn');
+    if (meta.currency === 'USD') {
+      await fetchUsdMxnRate();
+      if (usdMxnRate) {
+        mxnEl.textContent = `≈ $${(last * usdMxnRate).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} MXN`;
+      } else {
+        mxnEl.textContent = '';
+      }
+    } else {
+      mxnEl.textContent = '';
+    }
+
+    document.getElementById('quoteHead').style.display = 'flex';
+    document.getElementById('chartPanel').style.display = 'block';
+    document.getElementById('rsiPanel').style.display = 'block';
+    renderCharts(data);
+    renderSignal(data);
+    setStatus('');
+  } catch (e) {
+    setStatus(`No se pudo cargar "${symbol}". Verifica el símbolo (ej. AAPL, TSLA, BTC), o el servicio intermedio está ocupado — espera unos segundos e intenta de nuevo.`, true);
+    hideAllPanels();
+    return;
+  }
+
+  if (isCryptoLike(resolvedSymbol)) {
+    document.getElementById('fundPanel').style.display = 'block';
+    document.getElementById('fundGrid').innerHTML =
+      `<div class="fund-cell" style="grid-column: 1 / -1;">
+        <div class="label">No aplica</div>
+        <div class="value" style="font-size:13px; color: var(--muted); font-family: 'Inter', sans-serif;">
+          Las criptomonedas no tienen fundamentales tradicionales (P/E, ingresos, etc.) — son un activo distinto a una empresa.
+        </div>
+      </div>`;
+    return;
+  }
+
+  try {
+    const fund = await fetchFundamentals(resolvedSymbol);
+    renderFundamentals(fund);
+    document.getElementById('fundPanel').style.display = 'block';
+  } catch (e) {
+    document.getElementById('fundPanel').style.display = 'block';
+    document.getElementById('fundGrid').innerHTML =
+      `<div class="fund-cell" style="grid-column: 1 / -1;">
+        <div class="label">Fundamentales no disponibles</div>
+        <div class="value" style="font-size:13px; color: var(--muted); font-family: 'Inter', sans-serif;">
+          La fuente bloqueó esta consulta. Para datos fundamentales confiables, usa el script de Python incluido (stock_analysis.py).
+        </div>
+      </div>`;
+  }
+}
+
+searchBtn.addEventListener('click', runSearch);
+symbolInput.addEventListener('keydown', e => { if (e.key === 'Enter') runSearch(); });
+
+document.getElementById('rangeTabs').addEventListener('click', async (e) => {
+  if (e.target.tagName !== 'BUTTON') return;
+  document.querySelectorAll('#rangeTabs button').forEach(b => b.classList.remove('active'));
+  e.target.classList.add('active');
+  currentRange = e.target.dataset.range;
+  if (currentSymbol) {
+    setStatus('Actualizando rango…');
+    try {
+      const data = await fetchHistory(currentSymbol, currentRange);
+      renderCharts(data);
+      renderSignal(data);
+      setStatus('');
+    } catch (e) {
+      setStatus('No se pudo actualizar el rango.', true);
+    }
+  }
+});
+</script>
+</body>
+</html>
