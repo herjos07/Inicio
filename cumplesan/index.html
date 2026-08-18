@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>¡Feliz Cumpleaños, Sandra!</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #fce4ec, #f8bbd0);
+      color: #333;
+      padding: 20px;
+    }
+    header {
+      text-align: center;
+      padding: 40px 20px;
+      background: white;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    h1 { color: #d81b60; font-size: 2.5rem; margin-bottom: 10px; }
+    p.subtitle { color: #888; font-size: 1.1rem; }
+    
+    .audio-player {
+      text-align: center;
+      margin: 20px 0;
+    }
+    audio { outline: none; border-radius: 30px; }
+
+    .card {
+      background: white;
+      padding: 25px;
+      border-radius: 15px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+      margin-bottom: 30px;
+    }
+    .card h2 { color: #ad1457; margin-bottom: 15px; text-align: center; }
+
+    .mananitas-text {
+      font-style: italic;
+      text-align: center;
+      line-height: 1.8;
+      color: #555;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px;
+      margin-top: 20px;
+    }
+    .gallery-item {
+      overflow: hidden;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      background: #f9f9f9;
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 250px;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+    .gallery-item img:hover { transform: scale(1.03); }
+    .caption { padding: 10px; text-align: center; font-size: 0.9rem; color: #666; }
+
+    .wishes-list { list-style: none; }
+    .wishes-list li {
+      background: #f8bbd0;
+      color: #880e4f;
+      padding: 12px 18px;
+      margin-bottom: 10px;
+      border-radius: 20px;
+      font-weight: 500;
+    }
+.contenedor-foto {
+  width: 100%;       /* Ocupa todo el ancho disponible */
+  max-width: 800px;  /* Limita el tamaño máximo en pantallas grandes */
+  margin: 0 auto;    /* Centra el contenedor en la página */
+}
+
+.contenedor-foto img {
+  width: 100%;       /* La imagen se ajusta al ancho de su contenedor */
+  height: auto;      /* Mantiene la proporción original de la imagen */
+  display: block;    /* Elimina espacios extra debajo de la imagen */
+}
+
+    footer { text-align: center; padding: 20px; color: #888; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>¡Feliz Cumpleaños, Sandra! 🎉</h1>
+    <p class="subtitle">Un pequeño detalle para celebrar tu día especial</p>
+    
+    <div class="audio-player">
+      <audio autoplay controls>
+        <source src="mañanitas.mp3" type="audio/mpeg">
+        Tu navegador no soporta el reproductor de audio.
+      </audio>
+    </div>
+  </header>
+
+  <!-- Sección: Las Mañanitas -->
+  <section class="card">
+    <h2>🎵 Las Mañanitas</h2>
+    <div class="mananitas-text">
+      Estas son las mañanitas que cantaba el rey David<br>
+      Hoy por ser día de tu santo, te las cantamos aquí.<br><br>
+      Despierta, Sandra, despierta, mira que ya amaneció<br>
+      Ya los pajarillos cantan, la luna ya se metió.
+    </div>
+  </section>
+  
+  <!--Seccion Pastel-->
+  <section class="card">
+    <h2> Feliz Cumpleaños</h2>
+	<div class="contenedor-foto">
+		<img src="pastel.jpg" alt="Pastel">
+	</div>
+  </section>
+
+  <!-- Sección: Galería de Fotos -->
+  <section class="card">
+    <h2>📸 Recuerdos Especiales</h2>
+    <div class="gallery">
+      <div class="gallery-item">
+        <img src="celebrando.jpg" alt="Sandra">
+        <div class="caption">¡Siempre celebrando!</div>
+      </div>
+      <div class="gallery-item">
+        <img src="juntos.jpg" alt="Sandra y yo">
+        <div class="caption">Grandes momentos juntos</div>
+      </div>
+      <div class="gallery-item">
+        <img src="sonrisa.jpg" alt="Foto especial">
+        <div class="caption">Que nunca falte tu sonrisa</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Sección: Felicitaciones -->
+  <section class="card">
+    <h2>💌 Mensajes de Felicitación</h2>
+    <ul class="wishes-list">
+      <li>✨ ¡Que este nuevo año de vida esté lleno de éxitos, salud y mucha alegría!</li>
+      <li>🎂 Deseo que todos tus proyectos y metas se cumplan. ¡A celebrar en grande!</li>
+      <li>🌟 Gracias por compartir tu alegría. ¡Feliz día!</li>
+    </ul>
+  </section>
+
+  <footer>
+    Hecho con amor para Sandra en su cumpleaños 🎈
+	<br>Feliz cumpleaños!!!!!
+  </footer>
+
+</body>
+</html>
